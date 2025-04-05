@@ -19,12 +19,13 @@ class IntelGuardNet(nn.Module):
             num_decoder_layers=num_layers,
             dim_feedforward=dim_feedforward,
             dropout=0.1,
-            batch_first=True
+            batch_first=True,
         )
         self.fc_out = nn.Linear(d_model, vocab_size)
         self.vocab_size = vocab_size
-        self.pad_token_id = tokenizer.pad_token_id
-        self.eos_token_id = tokenizer.eos_token_id
+        self.pad_token_id = tokenizer.pad_token_id or 0  # Default to 0 if None
+        self.eos_token_id = tokenizer.eos_token_id or 1  # Default to 1 if None
+        self.bos_token_id = tokenizer.bos_token_id or 0  # Default to 0 if None
 
     def forward(self, input_ids, attention_mask=None, decoder_input_ids=None):
         src = self.embedding(input_ids)
@@ -47,8 +48,14 @@ class IntelGuardNet(nn.Module):
         batch_size = input_ids.size(0)
         device = input_ids.device
 
-        # Initialize with start token
-        decoder_input_ids = torch.ones((batch_size, 1), dtype=torch.long, device=device) * tokenizer.bos_token_id
+        # Initialize with start token (handle None case)
+        start_token = self.bos_token_id if self.bos_token_id is not None else 0
+        decoder_input_ids = torch.full(
+            (batch_size, 1),
+            start_token,
+            dtype=torch.long,
+            device=device
+        )
 
         for _ in range(max_length):
             with torch.no_grad():
@@ -67,7 +74,7 @@ class IntelGuardNet(nn.Module):
                 [decoder_input_ids, next_tokens.unsqueeze(-1)], dim=-1
             )
 
-            # Stop if all sequences have EOS
+            # Stop if all sequences have EOS or reach max length
             if (decoder_input_ids == self.eos_token_id).any(dim=-1).all():
                 break
 
