@@ -161,8 +161,8 @@ dataset = CommandDataset(input_encodings, target_encodings)
 train_size = int(0.8 * len(dataset))
 train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, len(dataset) - train_size])
 
-train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True)
-val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False)
+train_dataloader = DataLoader(train_dataset, batch_size=64, shuffle=True)
+val_dataloader = DataLoader(val_dataset, batch_size=64, shuffle=False)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = IntelGuardNet(tokenizer.vocab_size, 256, 4, 4, 512, tokenizer).to(device)
@@ -195,23 +195,6 @@ def custom_loss(predictions, labels, tokenizer):
         pred_str = tokenizer.decode(pred_tokens, skip_special_tokens=True)
         true_str = tokenizer.decode(true_tokens, skip_special_tokens=True)
 
-        # Penalty 1: Prediction doesn't start with "nmap" or IP (last part if split with space)
-        if not (pred_str.startswith("nmap") or
-               (len(pred_str.split()) > 0 and pred_str.split()[-1].replace('.', '').isdigit())):
-            penalty += 0.5
-
-        # Penalty 2: Single '-' not followed by another '-' or a letter
-        # Find all '-' in the prediction
-        for j in range(len(pred_str)-1):
-            if pred_str[j] == '-' and not (pred_str[j+1] == '-' or pred_str[j+1].isalpha()):
-                penalty += 0.3
-
-        # Penalty 3: Repeating flags or tokens in prediction
-        flags = re.findall(r'-\w+', pred_str)  # Find all flags in the prediction
-        if len(flags) > len(set(flags)):  # If flags are repeated
-            penalty += 0.5
-        if re.search(r'(-\w+)(?:\s+\1)+', pred_str):  # If the same flag appears consecutively
-            penalty += 0.5
 
         # Reward: If the prediction matches the true string
         if pred_str == true_str:
@@ -268,7 +251,7 @@ def validation(model):
 
 
 # 6. Training Loop
-for epoch in range(10):
+for epoch in range(5):
     model.train()
     epoch_loss = 0
 
@@ -302,6 +285,7 @@ for epoch in range(10):
 print("\nTraining complete. Running final evaluation...")
 final_val_loss = validation(model)
 print(f"Final Validation Loss: {final_val_loss:.4f}")
+torch.save(model, "model_comp.pth")
 
 
 # 8. Inference Function
