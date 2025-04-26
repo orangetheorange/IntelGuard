@@ -3,7 +3,14 @@
   <component name="CsvFileAttributes">
     <option name="attributeMap">
       <map>
-        <entry key="\generated_dataset_50k.csv">
+        <entry key="\50k\generated_dataset_50k.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="\generated_dataset_100000_lines.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />

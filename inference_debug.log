@@ -1,0 +1,36 @@
+2025-04-26 11:39:08,798 - __main__ - INFO - Initializing tokenizer
+2025-04-26 11:39:08,800 - urllib3.connectionpool - DEBUG - Starting new HTTPS connection (1): huggingface.co:443
+2025-04-26 11:39:08,929 - urllib3.connectionpool - DEBUG - https://huggingface.co:443 "HEAD /t5-small/resolve/main/tokenizer_config.json HTTP/11" 200 0
+2025-04-26 11:39:09,148 - __main__ - INFO - Added 3 special tokens
+2025-04-26 11:39:09,148 - __main__ - INFO - Pad token: <pad> (ID: 0)
+2025-04-26 11:39:09,148 - __main__ - INFO - EOS token: </s> (ID: 1)
+2025-04-26 11:39:09,164 - __main__ - INFO - Using device: cuda
+2025-04-26 11:39:09,164 - __main__ - INFO - Initializing model
+2025-04-26 11:39:09,414 - __main__ - INFO - Loading model weights
+2025-04-26 11:39:09,512 - __main__ - ERROR - Model initialization failed: embedding(): argument 'indices' (position 2) must be Tensor, not NoneType
+Traceback (most recent call last):
+  File "D:\Pycharm Projects\IntelGaurd\IntelGuard\scanner_load.py", line 125, in main
+    sample_output = model(sample_input, sample_input)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\orang\anaconda3\Lib\site-packages\torch\nn\modules\module.py", line 1739, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\orang\anaconda3\Lib\site-packages\torch\nn\modules\module.py", line 1750, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\Pycharm Projects\IntelGaurd\IntelGuard\IntelGuardNet.py", line 69, in forward
+    tgt = self.embedding(decoder_input_ids)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\orang\anaconda3\Lib\site-packages\torch\nn\modules\module.py", line 1739, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\orang\anaconda3\Lib\site-packages\torch\nn\modules\module.py", line 1750, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\orang\anaconda3\Lib\site-packages\torch\nn\modules\sparse.py", line 190, in forward
+    return F.embedding(
+           ^^^^^^^^^^^^
+  File "C:\Users\orang\anaconda3\Lib\site-packages\torch\nn\functional.py", line 2551, in embedding
+    return torch.embedding(weight, input, padding_idx, scale_grad_by_freq, sparse)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: embedding(): argument 'indices' (position 2) must be Tensor, not NoneType

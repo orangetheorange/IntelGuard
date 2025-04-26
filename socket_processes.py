@@ -60,7 +60,10 @@ def identify_input(input_string):
 
 def scan(target):
     print("----- Information Gathering -----")
-    grant_sudo_access()  # Prompt for sudo password before running nmap
+    if platform.system() == "Linux":
+        grant_sudo_access()
+    else:
+        pass
     iden = identify_input(target)
     print("Target input type:", iden)
     stat = ping(target)

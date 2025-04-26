@@ -1,0 +1,90 @@
+2025-04-19 12:50:31,094 - INFO - Tokenizer special tokens: ['[CMD]', '[FLAG]', '[VAL]']
+2025-04-19 12:50:31,094 - INFO - Pad token ID: 0
+2025-04-19 12:50:31,094 - INFO - EOS token ID: 1
+2025-04-19 12:50:31,109 - INFO - Using device: cuda
+2025-04-19 12:50:31,344 - WARNING - Failed to load best_model.pth: [Errno 2] No such file or directory: 'best_model.pth'
+2025-04-19 12:50:31,345 - WARNING - Failed to load final_model.pth: [Errno 2] No such file or directory: 'final_model.pth'
+2025-04-19 12:50:31,345 - WARNING - Failed to load model_full.pth: [Errno 2] No such file or directory: 'model_full.pth'
+2025-04-19 12:50:31,345 - INFO - Model device: cuda:0
+2025-04-19 12:50:31,345 - INFO - Model architecture: IntelGuardNet(
+  (embedding): Embedding(32003, 256)
+  (token_type_embeddings): Embedding(4, 256)
+  (position_embeddings): Embedding(512, 256)
+  (transformer): Transformer(
+    (encoder): TransformerEncoder(
+      (layers): ModuleList(
+        (0-3): 4 x TransformerEncoderLayer(
+          (self_attn): MultiheadAttention(
+            (out_proj): NonDynamicallyQuantizableLinear(in_features=256, out_features=256, bias=True)
+          )
+          (linear1): Linear(in_features=256, out_features=512, bias=True)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (linear2): Linear(in_features=512, out_features=256, bias=True)
+          (norm1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+          (norm2): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+          (dropout1): Dropout(p=0.1, inplace=False)
+          (dropout2): Dropout(p=0.1, inplace=False)
+        )
+      )
+      (norm): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+    )
+    (decoder): TransformerDecoder(
+      (layers): ModuleList(
+        (0-3): 4 x TransformerDecoderLayer(
+          (self_attn): MultiheadAttention(
+            (out_proj): NonDynamicallyQuantizableLinear(in_features=256, out_features=256, bias=True)
+          )
+          (multihead_attn): MultiheadAttention(
+            (out_proj): NonDynamicallyQuantizableLinear(in_features=256, out_features=256, bias=True)
+          )
+          (linear1): Linear(in_features=256, out_features=512, bias=True)
+          (dropout): Dropout(p=0.1, inplace=False)
+          (linear2): Linear(in_features=512, out_features=256, bias=True)
+          (norm1): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+          (norm2): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+          (norm3): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+          (dropout1): Dropout(p=0.1, inplace=False)
+          (dropout2): Dropout(p=0.1, inplace=False)
+          (dropout3): Dropout(p=0.1, inplace=False)
+        )
+      )
+      (norm): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+    )
+  )
+  (norm): LayerNorm((256,), eps=1e-05, elementwise_affine=True)
+  (fc_out): Linear(in_features=256, out_features=32003, bias=True)
+  (syntax_gate): Sequential(
+    (0): Linear(in_features=256, out_features=256, bias=True)
+    (1): Sigmoid()
+  )
+)
+2025-04-19 12:50:31,346 - INFO - 
+==================================================
+2025-04-19 12:50:31,346 - INFO - Processing input: Target: localhost, Iden: ip address, Stat: up, Ports: '21': 'vsftpd 3.0.5'; '22': 'openssh 8.9p1', OS: windows
+2025-04-19 12:50:31,366 - INFO - Input IDs: tensor([[12615,    10,   415, 12675,     6,    27,   537,    10,     3,    23,
+           102,  1115,     6,  7135,    10,    95,     6,  3625,     7,    10,
+             3,    31,  2658,    31,    10,     3,    31,   208,     7,    89,
+            17,   102,    26,  1877, 12100,    31,   117,     3,    31,  2884,
+            31,    10,     3,    31,  8751,     7,     7,   107,  4848,  1298,
+           102,   536,    31,     6,  6328,    10,  3196,     1,     0,     0,
+             0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+             0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+             0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+             0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+             0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+             0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
+             0,     0,     0,     0,     0,     0,     0,     0]],
+       device='cuda:0')
+2025-04-19 12:50:31,368 - INFO - Attention Mask: tensor([[1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+         1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+         0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+         0, 0, 0, 0, 0, 0, 0, 0]], device='cuda:0')
+2025-04-19 12:50:31,478 - INFO - Initial output shape: torch.Size([1, 1, 32003])
+2025-04-19 12:50:31,481 - INFO - First predicted token ID: 18646
+2025-04-19 12:50:31,482 - INFO - Token: Hristos
+2025-04-19 12:50:32,927 - INFO - Full generated IDs: [[18646, 29613, 18646, 18646, 18646, 29613, 18646, 18646, 29613, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 29613, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 29613, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 29613, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 29613, 18646, 18646, 18646, 18646, 29613, 18646, 18646, 18646, 29613, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646, 18646]]
+2025-04-19 12:50:32,935 - INFO - Generated tokens: ['Hristos', 'Russia', 'Hristos', 'Hristos', 'Hristos', 'Russia', 'Hristos', 'Hristos', 'Russia', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Russia', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Russia', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Russia', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Russia', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Russia', 'Hristos', 'Hristos', 'Hristos', 'Russia', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos', 'Hristos']
+2025-04-19 12:50:32,935 - INFO - SUCCESS! Generated Command: HristosRussia Hristos Hristos HristosRussia Hristos HristosRussia Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos HristosRussia Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos HristosRussia Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos HristosRussia Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos HristosRussia Hristos Hristos Hristos HristosRussia Hristos Hristos HristosRussia Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos Hristos
+2025-04-19 12:50:32,935 - INFO - Attempting forced generation...

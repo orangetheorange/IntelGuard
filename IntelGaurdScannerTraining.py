@@ -1,145 +1,31 @@
+# 1. Import libraries
 import pandas as pd
 import torch
 from transformers import T5Tokenizer
 from torch.utils.data import Dataset, DataLoader
 import torch.nn as nn
 import evaluate
-import re
-
-# 1. Model Definition
-class IntelGuardNet(nn.Module):
-    def __init__(self, vocab_size, d_model, nhead, num_layers, dim_feedforward, tokenizer):
-        super(IntelGuardNet, self).__init__()
-        self.tokenizer = tokenizer
-        self.vocab_size = vocab_size
-        self.d_model = d_model
-
-        # Base embeddings
-        self.embedding = nn.Embedding(vocab_size, d_model)
-
-        # Syntax-aware components
-        self.token_type_embeddings = nn.Embedding(4, d_model)  # 0=command, 1=flag, 2=value, 3=special
-        self.position_embeddings = nn.Embedding(512, d_model)  # Increased position awareness
-
-        # Enhanced transformer
-        self.transformer = nn.Transformer(
-            d_model=d_model,
-            nhead=nhead,
-            num_encoder_layers=num_layers,
-            num_decoder_layers=num_layers,
-            dim_feedforward=dim_feedforward,
-            dropout=0.1,
-            batch_first=True
-        )
-
-        # Output layers with syntax gate
-        self.fc_out = nn.Linear(d_model, vocab_size)
-        self.syntax_gate = nn.Sequential(
-            nn.Linear(d_model, d_model),
-            nn.Sigmoid()
-        )
-
-    def _get_token_types(self, input_ids):
-        """Determine token types (command, flag, value) for syntax awareness"""
-        batch_size, seq_len = input_ids.shape
-        token_types = torch.zeros_like(input_ids)
-
-        for b in range(batch_size):
-            tokens = self.tokenizer.convert_ids_to_tokens(input_ids[b])
-            for i, token in enumerate(tokens):
-                if token == self.tokenizer.pad_token:
-                    token_types[b, i] = 3  # Special
-                elif i == 0 or (i == 1 and tokens[0] == self.tokenizer.bos_token):
-                    token_types[b, i] = 0  # Command
-                elif token.startswith('-'):
-                    token_types[b, i] = 1  # Flag
-                elif token.replace('.', '').isdigit():
-                    token_types[b, i] = 2  # Value
-                else:
-                    token_types[b, i] = 3  # Other
-        return token_types
-
-    def forward(self, input_ids, attention_mask=None, decoder_input_ids=None):
-        # Get base embeddings
-        src = self.embedding(input_ids)
-        tgt = self.embedding(decoder_input_ids)
-
-        # Add syntax information
-        src_token_types = self._get_token_types(input_ids)
-        tgt_token_types = self._get_token_types(decoder_input_ids)
-
-        src = src + self.token_type_embeddings(src_token_types)
-        tgt = tgt + self.token_type_embeddings(tgt_token_types)
-
-        # Add position information
-        src_positions = torch.arange(0, input_ids.size(1), device=input_ids.device).unsqueeze(0)
-        tgt_positions = torch.arange(0, decoder_input_ids.size(1), device=decoder_input_ids.device).unsqueeze(0)
-
-        src = src + self.position_embeddings(src_positions)
-        tgt = tgt + self.position_embeddings(tgt_positions)
-
-        # Transformer processing
-        output = self.transformer(src, tgt)
-
-        # Syntax-gated output
-        gate = self.syntax_gate(output)
-        output = output * gate  # Emphasize syntax-correct features
-
-        return self.fc_out(output)
-
-    def generate(self, input_ids, max_length=50):
-        """Syntax-aware generation method"""
-        self.eval()
-        device = input_ids.device
-
-        # Initialize with start token
-        decoder_input = torch.tensor([[self.tokenizer.bos_token_id]], device=device)
-
-        for _ in range(max_length):
-            with torch.no_grad():
-                outputs = self(
-                    input_ids=input_ids,
-                    decoder_input_ids=decoder_input
-                )
-
-            # Get next token probabilities
-            next_token_logits = outputs[:, -1, :]
-
-            # Apply syntax constraints
-            current_text = self.tokenizer.decode(decoder_input[0], skip_special_tokens=True)
-            next_token_probs = torch.softmax(next_token_logits, dim=-1)
-
-            # Enforce syntax rules
-            if not current_text.strip():  # Must start with command
-                next_token_probs[:, :self.tokenizer.vocab_size] = -float('inf')
-                next_token_probs[:, self.tokenizer.convert_tokens_to_ids("nmap")] = 1.0
-            elif current_text.endswith(' -'):  # Must be followed by flag character
-                valid_flags = [i for t, i in self.tokenizer.vocab.items()
-                               if t.replace('▁', '').isalpha() and len(t.replace('▁', '')) == 1]
-                next_token_probs[:, :self.tokenizer.vocab_size] = -float('inf')
-                next_token_probs[:, valid_flags] = 1.0 / len(valid_flags)
-
-            next_token = torch.argmax(next_token_probs, dim=-1)
-            decoder_input = torch.cat([decoder_input, next_token.unsqueeze(0)], dim=-1)
-
-            if next_token.item() == self.tokenizer.eos_token_id:
-                break
-
-        return decoder_input
+from tqdm import tqdm
+from IntelGuardNet import IntelGuardNet
 
 
-# 2. Data Preparation
-df = pd.read_csv("generated_dataset_50k.csv")
+# 2. Data Preparation with validation
+print("Loading and preparing data...")
+df = pd.read_csv("generated_dataset_100000_lines.csv")
 df["input_text"] = df.apply(lambda
                                 row: f"Target: {row['Target']}, Iden: {row['Iden']}, Stat: {row['Stat']}, Ports: {row['Open Ports']}, OS: {row['OS']}",
                             axis=1)
 
 tokenizer = T5Tokenizer.from_pretrained("t5-small", legacy=False)
-input_encodings = tokenizer(df["input_text"].tolist(), padding=True, truncation=True, return_tensors="pt")
-target_encodings = tokenizer(df["Custom Command"].tolist(), padding=True, truncation=True, return_tensors="pt")
+tokenizer.add_special_tokens({'additional_special_tokens': ['[CMD]', '[FLAG]', '[VAL]']})
+
+input_encodings = tokenizer(df["input_text"].tolist(), padding=True, truncation=True, max_length=128,
+                            return_tensors="pt")
+target_encodings = tokenizer(df["Custom Command"].tolist(), padding=True, truncation=True, max_length=128,
+                             return_tensors="pt")
 
 
-# 3. Dataset Class
+# 3. Dataset Class with better batching
 class CommandDataset(Dataset):
     def __init__(self, input_encodings, target_encodings):
         self.input_encodings = input_encodings
@@ -156,20 +42,37 @@ class CommandDataset(Dataset):
         }
 
 
-# 4. Training Setup
+# 4. Improved Training Setup
 dataset = CommandDataset(input_encodings, target_encodings)
 train_size = int(0.8 * len(dataset))
-train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, len(dataset) - train_size])
+val_size = len(dataset) - train_size
+train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
 
-train_dataloader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-val_dataloader = DataLoader(val_dataset, batch_size=64, shuffle=False)
+train_dataloader = DataLoader(train_dataset, batch_size=32, shuffle=True, pin_memory=True)
+val_dataloader = DataLoader(val_dataset, batch_size=32, shuffle=False, pin_memory=True)
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = IntelGuardNet(tokenizer.vocab_size, 256, 4, 4, 512, tokenizer).to(device)
-optimizer = torch.optim.AdamW(model.parameters(), lr=0.001)
+print(f"Using device: {device}")
 
-# 5. Evaluation Functions
-rouge = evaluate.load("rouge")
+model = IntelGuardNet(
+    vocab_size=tokenizer.vocab_size + len(tokenizer.additional_special_tokens),
+    d_model=256,
+    nhead=4,
+    num_layers=4,
+    dim_feedforward=512,
+    tokenizer=tokenizer
+).to(device)
+
+# 5. Enhanced Training Configuration
+optimizer = torch.optim.AdamW(model.parameters(), lr=5e-5, weight_decay=0.01)
+scheduler = torch.optim.lr_scheduler.OneCycleLR(
+    optimizer,
+    max_lr=5e-4,
+    steps_per_epoch=len(train_dataloader),
+    epochs=5,
+    pct_start=0.1
+)
+
 
 def custom_loss(predictions, labels, tokenizer):
     # Calculate standard cross-entropy loss
@@ -204,21 +107,51 @@ def custom_loss(predictions, labels, tokenizer):
     avg_penalty = penalty / batch_size  # Average penalty over the batch
     return ce_loss + avg_penalty
 
+# Enhanced evaluation metrics
+rouge = evaluate.load("rouge")
+bleu = evaluate.load("bleu")
 
-def compute_metrics(predictions, labels):
-    decoded_preds = tokenizer.batch_decode(predictions, skip_special_tokens=True)
+
+def compute_metrics(predictions, labels, tokenizer):
+    decoded_preds = tokenizer.batch_decode(torch.argmax(predictions, dim=-1), skip_special_tokens=True)
     decoded_labels = tokenizer.batch_decode(labels, skip_special_tokens=True)
-    return rouge.compute(predictions=decoded_preds, references=decoded_labels)
+
+    # Basic accuracy
+    mask = labels != tokenizer.pad_token_id
+    correct = (torch.argmax(predictions, dim=-1) == labels) & mask
+    accuracy = correct.sum().float() / mask.sum().float()
+
+    # ROUGE and BLEU scores
+    rouge_scores = rouge.compute(predictions=decoded_preds, references=decoded_labels)
+    bleu_scores = bleu.compute(predictions=decoded_preds, references=[[ref] for ref in decoded_labels])
+
+    return {
+        "accuracy": accuracy.item(),
+        "rouge1": rouge_scores["rouge1"],
+        "rouge2": rouge_scores["rouge2"],
+        "rougeL": rouge_scores["rougeL"],
+        "bleu": bleu_scores["bleu"]
+    }
 
 
-def validation(model):
+def validation(model, dataloader, tokenizer):
     model.eval()
     total_loss = 0
-    all_preds = []
-    all_labels = []
+    exact_matches = 0  # Added to track exact matches
+    all_metrics = {
+        "accuracy": 0,
+        "rouge1": 0,
+        "rouge2": 0,
+        "rougeL": 0,
+        "bleu": 0
+    }
+
+    # Create a single progress bar at the start
+    val_bar = tqdm(dataloader, desc="Validating", colour='green',
+                  bar_format='{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt}')
 
     with torch.no_grad():
-        for batch in val_dataloader:
+        for batch in val_bar:
             batch = {k: v.to(device) for k, v in batch.items()}
             outputs = model(
                 input_ids=batch["input_ids"],
@@ -226,36 +159,59 @@ def validation(model):
                 decoder_input_ids=batch["labels"][:, :-1]
             )
 
-            # Apply custom loss function
-            loss = custom_loss(outputs, batch["labels"][:, 1:], tokenizer)  # Pass predictions, labels, and tokenizer
-
+            loss = custom_loss(outputs, batch["labels"][:, 1:], tokenizer)
             total_loss += loss.item()
 
+            # Calculate exact matches
             preds = torch.argmax(outputs, dim=-1)
-            all_preds.extend(preds.cpu().numpy())
-            all_labels.extend(batch["labels"][:, 1:].cpu().numpy())
+            for i in range(len(batch["input_ids"])):
+                pred_str = tokenizer.decode(preds[i], skip_special_tokens=True)
+                true_str = tokenizer.decode(batch["labels"][i, 1:], skip_special_tokens=True)
+                if pred_str == true_str:
+                    exact_matches += 1
 
-    metrics = compute_metrics(all_preds, all_labels)
-    avg_loss = total_loss / len(val_dataloader)
+            metrics = compute_metrics(outputs, batch["labels"][:, 1:], tokenizer)
+            for k in all_metrics:
+                all_metrics[k] += metrics[k]
 
-    print("\nValidation Samples:")
+    # Close the progress bar when done
+    val_bar.close()
+
+    avg_loss = total_loss / len(dataloader)
+    exact_match_rate = exact_matches / len(dataloader.dataset)  # Calculate exact match rate
+    for k in all_metrics:
+        all_metrics[k] /= len(dataloader)
+
+    # Print samples
+    print("Validation Samples:")
+    test_batch = next(iter(dataloader))
+    test_batch = {k: v.to(device) for k, v in test_batch.items()}
+    sample_outputs = model(
+        input_ids=test_batch["input_ids"][:3],
+        attention_mask=test_batch["attention_mask"][:3],
+        decoder_input_ids=test_batch["labels"][:3, :-1]
+    )
+    sample_preds = torch.argmax(sample_outputs, dim=-1)
+
     for i in range(3):
-        print(f"Input: {tokenizer.decode(val_dataset[i]['input_ids'], skip_special_tokens=True)}")
-        print(f"Predicted: {tokenizer.decode(all_preds[i], skip_special_tokens=True)}")
-        print(f"Actual: {tokenizer.decode(all_labels[i], skip_special_tokens=True)}\n")
+        print(f"Sample {i + 1}:")
+        print("Input:", tokenizer.decode(test_batch["input_ids"][i], skip_special_tokens=True))
+        print("Predicted:", tokenizer.decode(sample_preds[i], skip_special_tokens=True))
+        print("Actual:", tokenizer.decode(test_batch["labels"][i, 1:], skip_special_tokens=True))
 
     print(f"Validation Loss: {avg_loss:.4f}")
-    print(f"ROUGE Scores: {metrics}")
-    return avg_loss
-
-
+    print(f"Exact Match Rate: {exact_match_rate:.2%}")
+    print("Metrics:", all_metrics)
+    return avg_loss, all_metrics
 
 # 6. Training Loop
-for epoch in range(5):
+best_val_loss = float('inf')
+for epoch in range(1):
     model.train()
     epoch_loss = 0
+    progress_bar = tqdm(train_dataloader, desc=f"Epoch {epoch + 1}")
 
-    for step, batch in enumerate(train_dataloader):
+    for step, batch in enumerate(progress_bar):
         batch = {k: v.to(device) for k, v in batch.items()}
         optimizer.zero_grad()
 
@@ -266,44 +222,42 @@ for epoch in range(5):
         )
 
         loss = custom_loss(outputs, batch["labels"][:, 1:], tokenizer)
-
         loss.backward()
-        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
+        scheduler.step()
+
         epoch_loss += loss.item()
+        progress_bar.set_postfix({"loss": f"{loss.item():.4f}", "lr": f"{optimizer.param_groups[0]['lr']:.2e}"})
 
-        if step % 100 == 0 and step != 0:
-            print(f"Epoch {epoch + 1}, Step {step}, Loss {loss.item():.4f}")
+    avg_train_loss = epoch_loss / len(train_dataloader)
 
-    print(f"\nEpoch {epoch + 1} Train Loss: {epoch_loss / len(train_dataloader):.4f}")
-    val_loss = validation(model)
+    # Validation
+    val_loss, val_metrics = validation(model, val_dataloader, tokenizer)
+    print(f"Epoch {epoch + 1} Train Loss: {avg_train_loss:.4f}")
+    # Save best model
+    if val_loss < best_val_loss:
+        best_val_loss = val_loss
+        torch.save(model.state_dict(), "best_model.pth")
+        print("Saved new best model")
 
-    # Save model checkpoint
-    torch.save(model.state_dict(), f"model_epoch_{epoch + 1}.pth")
+    # Save checkpoint
+    torch.save({
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'loss': avg_train_loss,
+        'val_loss': val_loss
+    }, f"checkpoint_epoch_{epoch + 1}.pth")
 
-# 7. Final Evaluation
-print("\nTraining complete. Running final evaluation...")
-final_val_loss = validation(model)
+# 7. Final Evaluation and Model Saving
+print("Training complete. Running final evaluation...")
+final_val_loss, final_metrics = validation(model, val_dataloader, tokenizer)
 print(f"Final Validation Loss: {final_val_loss:.4f}")
-torch.save(model, "model_comp.pth")
+print("Final Metrics:", final_metrics)
 
-
-# 8. Inference Function
-def generate_command(model, target, iden, stat, ports, os):
-    input_text = f"Target: {target}, Iden: {iden}, Stat: {stat}, Ports: {ports}, OS: {os}"
-    inputs = tokenizer(input_text, return_tensors="pt").to(device)
-
-    # Simple greedy decoding
-    decoder_input = torch.tensor([[tokenizer.pad_token_id]]).to(device)
-    for _ in range(50):  # max length
-        outputs = model(
-            input_ids=inputs["input_ids"],
-            attention_mask=inputs["attention_mask"],
-            decoder_input_ids=decoder_input
-        )
-        next_token = torch.argmax(outputs[:, -1, :], dim=-1)
-        decoder_input = torch.cat([decoder_input, next_token.unsqueeze(0)], dim=-1)
-        if next_token.item() == tokenizer.eos_token_id:
-            break
-
-    return tokenizer.decode(decoder_input[0], skip_special_tokens=True)
+# Save final model
+torch.save(model.state_dict(), "final_model.pth")
+torch.save(model, "100k/model_full.pth")
+print("Model saved successfully")
