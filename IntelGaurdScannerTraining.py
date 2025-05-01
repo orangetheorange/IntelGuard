@@ -160,7 +160,6 @@ def validation(model, dataloader, tokenizer):
     with torch.no_grad():
         for batch in val_bar:
             batch = {k: v.to(device) for k, v in batch.items()}
-            print("batch at itter",  batch)
             outputs = model(
                 input_ids=batch["input_ids"],
                 attention_mask=batch["attention_mask"],
@@ -221,6 +220,7 @@ for epoch in range(1):
 
     for step, batch in enumerate(progress_bar):
         batch = {k: v.to(device) for k, v in batch.items()}
+        print("batch at itter",  batch["input_ids"])
         optimizer.zero_grad()
 
         outputs = model(
@@ -248,7 +248,7 @@ for epoch in range(1):
     if val_loss < best_val_loss:
         best_val_loss = val_loss
         #torch.save(model.state_dict(), "best_model.pth")
-        print("Saved new best model")
+        # print("Saved new best model")
 
     # Save checkpoint
     #torch.save({
