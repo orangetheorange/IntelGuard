@@ -7,7 +7,14 @@ import torch.nn as nn
 import evaluate
 from tqdm import tqdm
 from IntelGuardNet import IntelGuardNet
+from pathlib import Path
+import os
 
+script_path = Path(__file__).resolve()
+
+parent_dir = script_path.parent
+
+os.chdir(parent_dir)
 
 # 2. Data Preparation with validation
 print("Loading and preparing data...")
@@ -153,6 +160,7 @@ def validation(model, dataloader, tokenizer):
     with torch.no_grad():
         for batch in val_bar:
             batch = {k: v.to(device) for k, v in batch.items()}
+            print("batch at itter",  batch)
             outputs = model(
                 input_ids=batch["input_ids"],
                 attention_mask=batch["attention_mask"],
@@ -239,17 +247,17 @@ for epoch in range(1):
     # Save best model
     if val_loss < best_val_loss:
         best_val_loss = val_loss
-        torch.save(model.state_dict(), "best_model.pth")
+        #torch.save(model.state_dict(), "best_model.pth")
         print("Saved new best model")
 
     # Save checkpoint
-    torch.save({
-        'epoch': epoch,
-        'model_state_dict': model.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
-        'loss': avg_train_loss,
-        'val_loss': val_loss
-    }, f"checkpoint_epoch_{epoch + 1}.pth")
+    #torch.save({
+    #     'epoch': epoch,
+    #     'model_state_dict': model.state_dict(),
+    #     'optimizer_state_dict': optimizer.state_dict(),
+    #     'loss': avg_train_loss,
+    #     'val_loss': val_loss
+    # }, f"checkpoint_epoch_{epoch + 1}.pth")
 
 # 7. Final Evaluation and Model Saving
 print("Training complete. Running final evaluation...")
@@ -258,6 +266,6 @@ print(f"Final Validation Loss: {final_val_loss:.4f}")
 print("Final Metrics:", final_metrics)
 
 # Save final model
-torch.save(model.state_dict(), "final_model.pth")
-torch.save(model, "100k/model_full.pth")
+#torch.save(model.state_dict(), "final_model.pth")
+#torch.save(model, "100k/model_full.pth")
 print("Model saved successfully")

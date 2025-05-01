@@ -2,16 +2,39 @@ import torch
 from transformers import T5Tokenizer
 from IntelGuardNet import IntelGuardNet
 
+from pathlib import Path
+import os
+
+script_path = Path(__file__).resolve()
+
+parent_dir = script_path.parent
+
+os.chdir(parent_dir)
+
 # 1. Load the tokenizer
 print("Loading tokenizer...")
 tokenizer = T5Tokenizer.from_pretrained("t5-small", legacy=False)
 tokenizer.add_special_tokens({'additional_special_tokens': ['[CMD]', '[FLAG]', '[VAL]']})
 
-# 2. Load the model
-print("Loading model...")
+# 2.1 recreate your model skeleton exactly as you did at training time
+print("building model architecture…")
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-model = torch.load("100k/model_full.pth", map_location=device, weights_only=False)  # <-- Load full model
-model.to(device)
+model = IntelGuardNet(
+    vocab_size=tokenizer.vocab_size + len(tokenizer.additional_special_tokens),
+    d_model=256,
+    nhead=4,
+    num_layers=4,
+    dim_feedforward=512,
+    tokenizer=tokenizer
+).to(device)
+
+# 2.2 load only the weights you saved (final_model.pth is just a state_dict)
+print("loading weights from final_model.pth…")
+state_dict = torch.load(
+    r"final_model.pth",
+    map_location=device
+)
+model.load_state_dict(state_dict)
 model.eval()
 
 
