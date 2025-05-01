@@ -38,58 +38,51 @@ model.load_state_dict(state_dict)
 model.eval()
 
 
-# 3. Prediction function
-def predict_command(scan_line):
-    model.eval()
-
-    # Debug: Print input scan line
-    print(f"Input scan line: {scan_line}")
-
-    # Tokenize the input scan line
-    inputs = tokenizer(
-        scan_line,
-        return_tensors="pt",
-        padding=True,
-        truncation=True
+def generate_command(input_text, max_len=64):
+    # tokenize encoder input
+    enc = tokenizer(
+        input_text,
+        padding="max_length",
+        truncation=True,
+        max_length=128,
+        return_tensors="pt"
     ).to(device)
+    input_ids = enc.input_ids
+    attention_mask = enc.attention_mask
 
-    # Debug: Print tokenized input
-    print(f"Tokenized inputs: {inputs}")
+    # start decoder with pad token
+    decoder_ids = torch.full((1, 1), tokenizer.pad_token_id, dtype=torch.long, device=device)
 
-    # Start decoder input with a pad or any dummy token like "0"
-    decoder_input_ids = torch.zeros(
-        (inputs["input_ids"].size(0), 1),
-        dtype=torch.long,
-        device=device
-    )
-
-    # Debug: Print decoder input
-    print(f"Decoder input ids: {decoder_input_ids}")
-
-    with torch.no_grad():
-        # Run the model
-        outputs = model(
-            input_ids=inputs["input_ids"],
-            attention_mask=inputs["attention_mask"],
-            decoder_input_ids=decoder_input_ids
+    for _ in range(max_len):
+        logits = model(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            decoder_input_ids=decoder_ids
         )
+        next_token = torch.argmax(logits[:, -1, :], dim=-1, keepdim=True)
+        decoder_ids = torch.cat([decoder_ids, next_token], dim=-1)
+        if next_token.item() == tokenizer.eos_token_id:
+            break
 
-        # Debug: Print raw model output
-        print(f"Raw model output: {outputs}")
+    # skip initial pad token
+    gen_ids = decoder_ids[:, 1:]
+    return tokenizer.decode(gen_ids[0], skip_special_tokens=True)
 
-    # Extract predictions
-    preds = torch.argmax(outputs, dim=-1)
-
-    # Debug: Print predictions
-    print(f"Predicted token IDs: {preds}")
-
-    # Decode predicted tokens
-    predicted_command = tokenizer.decode(preds[0], skip_special_tokens=True)
-
-    # Debug: Print the final predicted command
-    print(f"Predicted command: {predicted_command}")
-
-    return predicted_command
+def predict_command(raw):
+    parts = [p.strip() for p in raw.split(",")]
+    if len(parts) != 5:
+        raise ValueError("expected 5 comma-separated fields")
+    target, iden, stat, ports, os_ = parts
+    # rebuild string exactly as in training ("Ports:", not "Open Ports:")
+    input_text = (
+        f"Target: {target}, "
+        f"Iden: {iden}, "
+        f"Stat: {stat}, "
+        f"Ports: {ports}, "
+        f"OS: {os_}"
+    )
+    print("encoder input ids:", tokenizer(input_text, padding="max_length", truncation=True, max_length=128, return_tensors="pt").input_ids)
+    return generate_command(input_text)
 
 
 # 4. Main application loop
