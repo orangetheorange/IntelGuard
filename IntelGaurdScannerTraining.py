@@ -220,7 +220,7 @@ for epoch in range(1):
 
     for step, batch in enumerate(progress_bar):
         batch = {k: v.to(device) for k, v in batch.items()}
-        print("batch at itter",  batch["input_ids"])
+#         print("batch at itter",  batch["input_ids"])
         optimizer.zero_grad()
 
         outputs = model(
@@ -266,6 +266,6 @@ print(f"Final Validation Loss: {final_val_loss:.4f}")
 print("Final Metrics:", final_metrics)
 
 # Save final model
-#torch.save(model.state_dict(), "final_model.pth")
+torch.save(model.state_dict(), "final_model.pth")
 #torch.save(model, "100k/model_full.pth")
 print("Model saved successfully")

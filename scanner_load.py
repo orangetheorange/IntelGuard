@@ -31,7 +31,7 @@ model = IntelGuardNet(
 # 2.2 load only the weights you saved (final_model.pth is just a state_dict)
 print("loading weights from final_model.pth…")
 state_dict = torch.load(
-    r"final_model.pth",
+    r"best_model.pth",
     map_location=device
 )
 model.load_state_dict(state_dict)
@@ -106,7 +106,7 @@ if __name__ == "__main__":
         target, identity, status, open_ports, os = parts
 
         # Create input text for the model
-        input_text = f"Target: {target}, Iden: {identity}, Stat: {status}, Open Ports: {open_ports}, OS: {os}"
+        input_text = f"Target: {target}, Iden: {identity}, Stat: {status}, Ports: {open_ports}, OS: {os}"
 
         # Debug: Print the final input text
         print(f"Input text for model: {input_text}")
