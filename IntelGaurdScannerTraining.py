@@ -16,8 +16,15 @@ parent_dir = script_path.parent
 
 os.chdir(parent_dir)
 
+global saves_model, epoch, best_val_loss, val_dataloader, train_dataloader, tokenizer
+
+saves_model = True
+
 # 2. Data Preparation with validation
+print("Loading model...")
+load_model_path = "100k/final_model.pth"
 print("Loading and preparing data...")
+
 df = pd.read_csv("generated_dataset_100000_lines.csv")
 df["input_text"] = df.apply(lambda
                                 row: f"Target: {row['Target']}, Iden: {row['Iden']}, Stat: {row['Stat']}, Ports: {row['Open Ports']}, OS: {row['OS']}",
@@ -69,6 +76,15 @@ model = IntelGuardNet(
     dim_feedforward=512,
     tokenizer=tokenizer
 ).to(device)
+
+# optionally load pretrained weights
+if load_model_path:
+    if os.path.isfile(load_model_path):
+        model.load_state_dict(torch.load(load_model_path, map_location=device))
+        print(f'loaded model weights from {load_model_path}')
+    else:
+        print(f'no checkpoint found at {load_model_path}')
+
 
 # 5. Enhanced Training Configuration
 optimizer = torch.optim.AdamW(model.parameters(), lr=5e-5, weight_decay=0.01)
@@ -141,7 +157,8 @@ def compute_metrics(predictions, labels, tokenizer):
     }
 
 
-def validation(model, dataloader, tokenizer):
+def validation(model):
+    global train_dataloader, tokenizer
     model.eval()
     total_loss = 0
     exact_matches = 0  # Added to track exact matches
@@ -154,7 +171,7 @@ def validation(model, dataloader, tokenizer):
     }
 
     # Create a single progress bar at the start
-    val_bar = tqdm(dataloader, desc="Validating", colour='green',
+    val_bar = tqdm(val_dataloader, desc="Validating", colour='green',
                   bar_format='{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt}')
 
     with torch.no_grad():
@@ -184,14 +201,14 @@ def validation(model, dataloader, tokenizer):
     # Close the progress bar when done
     val_bar.close()
 
-    avg_loss = total_loss / len(dataloader)
-    exact_match_rate = exact_matches / len(dataloader.dataset)  # Calculate exact match rate
+    avg_loss = total_loss / len(val_dataloader)
+    exact_match_rate = exact_matches / len(val_dataloader.dataset)  # Calculate exact match rate
     for k in all_metrics:
-        all_metrics[k] /= len(dataloader)
+        all_metrics[k] /= len(val_dataloader)
 
     # Print samples
     print("Validation Samples:")
-    test_batch = next(iter(dataloader))
+    test_batch = next(iter(val_dataloader))
     test_batch = {k: v.to(device) for k, v in test_batch.items()}
     sample_outputs = model(
         input_ids=test_batch["input_ids"][:3],
@@ -211,53 +228,63 @@ def validation(model, dataloader, tokenizer):
     print("Metrics:", all_metrics)
     return avg_loss, all_metrics
 
-# 6. Training Loop
-best_val_loss = float('inf')
-for epoch in range(1):
-    model.train()
-    epoch_loss = 0
-    progress_bar = tqdm(train_dataloader, desc=f"Epoch {epoch + 1}")
+def training_loop(model):
+    # 6. Training Loop
+    global best_val_loss, train_dataloader, tokenizer
+    best_val_loss = float('inf')
+    for epoch in range(1):
+        model.train()
+        epoch_loss = 0
+        progress_bar = tqdm(train_dataloader, desc=f"Epoch {epoch + 1}")
 
-    for step, batch in enumerate(progress_bar):
-        batch = {k: v.to(device) for k, v in batch.items()}
-#         print("batch at itter",  batch["input_ids"])
-        optimizer.zero_grad()
+        for step, batch in enumerate(progress_bar):
+            batch = {k: v.to(device) for k, v in batch.items()}
+    #         print("batch at itter",  batch["input_ids"])
+            optimizer.zero_grad()
 
-        outputs = model(
-            input_ids=batch["input_ids"],
-            attention_mask=batch["attention_mask"],
-            decoder_input_ids=batch["labels"][:, :-1]
-        )
+            outputs = model(
+                input_ids=batch["input_ids"],
+                attention_mask=batch["attention_mask"],
+                decoder_input_ids=batch["labels"][:, :-1]
+            )
 
-        loss = custom_loss(outputs, batch["labels"][:, 1:], tokenizer)
-        loss.backward()
+            loss = custom_loss(outputs, batch["labels"][:, 1:], tokenizer)
+            loss.backward()
 
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-        optimizer.step()
-        scheduler.step()
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+            optimizer.step()
+            scheduler.step()
 
-        epoch_loss += loss.item()
-        progress_bar.set_postfix({"loss": f"{loss.item():.4f}", "lr": f"{optimizer.param_groups[0]['lr']:.2e}"})
+            epoch_loss += loss.item()
+            progress_bar.set_postfix({"loss": f"{loss.item():.4f}", "lr": f"{optimizer.param_groups[0]['lr']:.2e}"})
 
-    avg_train_loss = epoch_loss / len(train_dataloader)
-
-    # Validation
-    val_loss, val_metrics = validation(model, val_dataloader, tokenizer)
-    print(f"Epoch {epoch + 1} Train Loss: {avg_train_loss:.4f}")
-    # Save best model
-    if val_loss < best_val_loss:
-        best_val_loss = val_loss
-        #torch.save(model.state_dict(), "best_model.pth")
-        # print("Saved new best model")
+        avg_train_loss = epoch_loss / len(train_dataloader)
+        print(f"Epoch {epoch + 1} Train Loss: {avg_train_loss:.4f}")
+        
+        # Validation
+        validation()
+        val_loss, val_metrics = validation(model, val_dataloader, tokenizer)
+        print(f"Epoch {epoch + 1} Val Loss: {val_loss:.4f}")
+        # Save best model
+        if val_loss < best_val_loss and saves_model:
+            best_val_loss = val_loss
+            torch.save(model.state_dict(), "best_model.pth")
+            print("Saved new best model")
 
     # Save checkpoint
-    #torch.save({
-    #     'epoch': epoch,
-    #     'model_state_dict': model.state_dict(),
-    #     'optimizer_state_dict': optimizer.state_dict(),
-    #     'loss': avg_train_loss,
-    #     'val_loss': val_loss
-    # }, f"checkpoint_epoch_{epoch + 1}.pth")
+    if(saves_model):
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'loss': avg_train_loss,
+            'val_loss': val_loss
+        }, f"checkpoint_epoch_{epoch + 1}.pth")
+        
+
+# training_loop(model=model)
+validation(model=model)
+
 
 # 7. Final Evaluation and Model Saving
 print("Training complete. Running final evaluation...")
