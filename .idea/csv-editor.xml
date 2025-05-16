@@ -3,13 +3,6 @@
   <component name="CsvFileAttributes">
     <option name="attributeMap">
       <map>
-        <entry key="C:\Users\orang\Downloads\malware_suspiciousness_dataset.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
         <entry key="\50k\generated_dataset_50k.csv">
           <value>
             <Attribute>
@@ -18,6 +11,13 @@
           </value>
         </entry>
         <entry key="\generated_dataset_100000_lines.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="\malware_suspiciousness_dataset.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />
