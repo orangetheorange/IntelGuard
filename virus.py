@@ -1,15 +1,13 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset, WeightedRandomSampler
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import QuantileTransformer, StandardScaler
+from sklearn.preprocessing import StandardScaler
 from sklearn.feature_selection import SelectKBest, mutual_info_classif
 from sklearn.metrics import classification_report, confusion_matrix
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-import time
 
 # Fix random seeds
 torch.manual_seed(42)
@@ -71,16 +69,18 @@ class MalwareClassifier(nn.Module):
             nn.ReLU(),
             nn.Dropout(0.3),
             nn.Linear(64, num_classes)
+        )
 
-        # Initialize weights properly
+        # Initialize weights properly (outside the Sequential block)
         for m in self.modules():
             if isinstance(m, nn.Linear):
-            nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
-            if m.bias is not None:
-                nn.init.constant_(m.bias, 0)
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+                if m.bias is not None:
+                    nn.init.constant_(m.bias, 0)
 
     def forward(self, x):
         return self.net(x)
+
 
 
 # --- Training Setup ---
@@ -207,7 +207,7 @@ with torch.no_grad():
         all_labels.extend(targets.numpy())
 
 print("\nClassification Report:")
-print(classification_report(all_labels, all_preds, target_names=levels, digits=4))
+print(classification_report(all_labels, all_preds, target_names=[str(lvl) for lvl in levels], digits=4))
 
 print("\nConfusion Matrix:")
 print(confusion_matrix(all_labels, all_preds))
