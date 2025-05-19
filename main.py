@@ -7,6 +7,7 @@ import json
 from tkinter import filedialog
 import os
 import subprocess
+import webbrowser
 
 
 class Target():
@@ -255,7 +256,7 @@ def start_virus_scan():
 
     def scan_thread():
         try:
-            result = virusscan.run_prediction_pipeline()
+            result = virusscan.run_prediction_pipeline(main)
             show_results(result)
         except Exception as e:
             messagebox.showerror("Error", f"Scan failed: {str(e)}")
@@ -409,6 +410,22 @@ settings_content_frame.pack(fill="both", expand=True, padx=20, pady=20)
 # Console Settings Section
 console_settings_frame = ctk.CTkFrame(settings_content_frame, fg_color=tab_content_bg)
 console_settings_frame.pack(fill="x", pady=(0, 20))
+
+
+def open_nmap_website(event):
+    webbrowser.open_new("https://nmap.org/download.html")
+
+nmap_link = ctk.CTkLabel(
+    home_frame,
+    text="Download Nmap here",
+    font=ctk.CTkFont(size=16, underline=True),
+    text_color="#3399ff",
+    cursor="hand2",
+    fg_color=tab_content_bg
+)
+nmap_link.pack(pady=(10, 20))
+nmap_link.bind("<Button-1>", open_nmap_website)
+
 
 ctk.CTkLabel(console_settings_frame,
              text="Console Settings",

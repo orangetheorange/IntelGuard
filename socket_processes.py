@@ -4,45 +4,66 @@ import re
 import socket
 import subprocess
 import sys
+import shutil
+
+
+def ensure_nmap_in_path():
+    """Ensure nmap is accessible from the current Python environment on Windows."""
+    if platform.system() == "Windows":
+        if shutil.which("nmap") is None:
+            nmap_path = r"C:\Program Files (x86)\Nmap"
+            if os.path.exists(os.path.join(nmap_path, "nmap.exe")):
+                os.environ["PATH"] += os.pathsep + nmap_path
+            else:
+                print("❌ Error: Nmap not found at expected location.")
+                return False
+        return True
+    return True  # Linux/Mac typically fine if installed via package manager
 
 
 def grant_sudo_access():
-    if subprocess.getoutput('id -u') != '0':  # Check if not running as root
-        subprocess.run(['pkexec', sys.executable] + sys.argv)  # Request sudo access
-        sys.exit(0)  # Exit after sudo request
+    if platform.system() != "Windows":
+        if subprocess.getoutput('id -u') != '0':
+            subprocess.run(['pkexec', sys.executable] + sys.argv)
+            sys.exit(0)
 
 
 def ping(host):
     param = "-n" if platform.system().lower() == "windows" else "-c"
     command = ["ping", param, "4", host]
-    response = os.system(" ".join(command))
-    return "up" if response == 0 else "down"
+    response = subprocess.getoutput(" ".join(command))
+    print(response)
+    return "up" if "TTL=" in response or "ttl=" in response or "::1" in response else "down"
 
 
 def portscan(host, args="-sV -O"):
-    process = subprocess.Popen(["sudo", "nmap"] + args.split() + [host], stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                               text=True, bufsize=1)
-    port_list = []
-    os_info = ""
+    if not ensure_nmap_in_path():
+        print("❌ Error: nmap is not installed or not in PATH.")
+        return {}, ""
 
-    for line in iter(process.stdout.readline, ''):
-        if "open" in line:
-            port_list.append(line.strip())
-        if "OS details" in line:
-            os_info = line.strip().replace("OS details:", "").strip()
-    process.wait()
+    try:
+        command = ["nmap"] + args.split() + [host]
+        result = subprocess.getoutput(" ".join(command))
 
-    ports = {}
-    for entry in port_list:
-        match = re.search(r"(\d+)/tcp\s+open\s+\S+\s+(.+)", entry)
-        if match:
-            ports[match.group(1)] = match.group(2)
+        ports = {}
+        os_info = ""
 
-    return ports, os_info
+        for line in result.splitlines():
+            if "/tcp" in line and "open" in line:
+                match = re.search(r"(\d+)/tcp\s+open\s+\S+\s+(.+)", line)
+                if match:
+                    ports[match.group(1)] = match.group(2)
+            if "OS details" in line:
+                os_info = line.strip().replace("OS details:", "").strip()
+
+        return ports, os_info
+    except Exception as e:
+        print("❌ Error during portscan:", e)
+        return {}, ""
 
 
 def identify_input(input_string):
-    domain_regex = r'^[a-zA-Z0-9.-]+\.[a-zAZ0-9]{2,}$'
+    domain_regex = r'^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
     url_regex = r'^(https?://)?([a-zA-Z0-9.-]+)(/.*)?$'
     ip_regex = r'^(\d{1,3}\.){3}\d{1,3}$'
     if re.match(ip_regex, input_string):
@@ -62,25 +83,30 @@ def scan(target):
     print("----- Information Gathering -----")
     if platform.system() == "Linux":
         grant_sudo_access()
-    else:
-        pass
+
     iden = identify_input(target)
     print("Target input type:", iden)
+
     stat = ping(target)
     print("The host is", stat)
+
     open_ports, os_info = portscan(target)
     print("Open Ports:")
-    for x in open_ports:
-        print(x, open_ports[x])
+    for port, desc in open_ports.items():
+        print(f"{port}: {desc}")
+
     print("OS Details:", os_info if os_info else "OS details not detected")
 
-    # Return the result as a dictionary instead of saving to a file
     result = {
         "Target": target,
         "Iden": iden,
         "Stat": stat,
         "Open Ports": open_ports,
-        "OS": os_info if os_info else "OS details not detected"
+        "OS": os_info if os_info else "windows"
     }
-
     return result
+
+
+# Test the scan
+if __name__ == "__main__":
+    print(scan("localhost"))
