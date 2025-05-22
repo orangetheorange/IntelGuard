@@ -31,8 +31,11 @@ def scanTar(target):
                 reportinp += f"\n[Info] No parameters found in URL to scan: {target}\n"
         else:
             reportinp += f"\n[Info] URL has no parameters to scan: {target}\n"
+        target = urlparse(target).hostname
     else:
         reportinp += f"\n[Info] Target is not a URL: {target}\n"
+    cmd = ""
+    vulnResult = run_command(cmd)
 
 
 print(run_command(""))
