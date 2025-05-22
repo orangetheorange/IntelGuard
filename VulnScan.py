@@ -2,6 +2,7 @@ import subprocess
 import socket_processes
 from urllib.parse import urlparse, parse_qs
 import SQLscan
+import report
 
 def has_parameters(url: str) -> bool:
     parsed = urlparse(url)
@@ -36,6 +37,6 @@ def scanTar(target):
         reportinp += f"\n[Info] Target is not a URL: {target}\n"
     cmd = ""
     vulnResult = run_command(cmd)
+    rep = report.report(vulnResult)
+    return rep
 
-
-print(run_command(""))

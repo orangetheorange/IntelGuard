@@ -52,6 +52,3 @@ def report(result):
     full_response = tokenizer.decode(outputs[0][inputs.shape[1]:], skip_special_tokens=True)
     return full_response.strip()
 
-
-# Example usage
-print(report("Found vulnerability: EternalBlue"))
