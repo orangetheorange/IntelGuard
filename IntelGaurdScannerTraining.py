@@ -165,7 +165,7 @@ def validation(model, dataloader, tokenizer):
                 attention_mask=batch["attention_mask"],
                 decoder_input_ids=batch["labels"][:, :-1]
             )
-
+            
             loss = custom_loss(outputs, batch["labels"][:, 1:], tokenizer)
             total_loss += loss.item()
 
@@ -220,13 +220,13 @@ for epoch in range(1):
 
     for step, batch in enumerate(progress_bar):
         batch = {k: v.to(device) for k, v in batch.items()}
-        print("batch at itter",  batch["input_ids"])
+#         print("batch at itter",  batch["input_ids"])
         optimizer.zero_grad()
 
         outputs = model(
             input_ids=batch["input_ids"],
             attention_mask=batch["attention_mask"],
-            decoder_input_ids=batch["labels"][:, :-1]
+            decoder_input_ids=batch["input_ids"][:, :-1]
         )
 
         loss = custom_loss(outputs, batch["labels"][:, 1:], tokenizer)
@@ -266,6 +266,6 @@ print(f"Final Validation Loss: {final_val_loss:.4f}")
 print("Final Metrics:", final_metrics)
 
 # Save final model
-#torch.save(model.state_dict(), "final_model.pth")
+torch.save(model.state_dict(), "test_model.pth")
 #torch.save(model, "100k/model_full.pth")
 print("Model saved successfully")
