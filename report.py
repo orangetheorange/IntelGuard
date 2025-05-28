@@ -16,7 +16,7 @@ def report(result):
     # Construct chat messages
     question = (
         f"{result} \nThis is a result of a vulnerability scan for the target. "
-        f"Generate a report containing a description and a solution. "
+        f"Generate a report containing a description and a solution. If there are none vulnerabilities or its signs, just state that its safe, but also give further instructions to prevent other dangers. "
         f"Your response should only contain the report itself."
     )
 
@@ -51,4 +51,3 @@ def report(result):
     # Decode response
     full_response = tokenizer.decode(outputs[0][inputs.shape[1]:], skip_special_tokens=True)
     return full_response.strip()
-

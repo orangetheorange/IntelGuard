@@ -105,8 +105,3 @@ def scan(target):
         "OS": os_info if os_info else "windows"
     }
     return result
-
-
-# Test the scan
-if __name__ == "__main__":
-    print(scan("localhost"))

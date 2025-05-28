@@ -8,15 +8,136 @@ from tkinter import filedialog
 import os
 import subprocess
 import webbrowser
+import VulnScan
+main = ctk.CTk()
+
+scan_in_progress = False
 
 
+# Modify the Target class scan method
 class Target():
     def __init__(self, name, add):
         self.name = name
         self.add = add
 
     def scan(self):
-        messagebox.showinfo("Info", "Feature in development")
+        global scan_in_progress
+
+        if scan_in_progress:
+            messagebox.showwarning("Warning", "A scan is already in progress. Please wait for it to complete.")
+            return
+
+        scan_in_progress = True
+        scanner = ctk.CTkToplevel(main)
+        scanner.title("Scanning in progress...")
+        scanner.geometry("600x400")
+        scanner.resizable(False, False)
+
+        # Make sure this window stays on top
+        scanner.attributes('-topmost', True)
+        scanner.after(100, lambda: scanner.attributes('-topmost', False))
+
+        # Center the scanner window
+        main.update_idletasks()
+        x = main.winfo_x() + (main.winfo_width() - 600) // 2
+        y = main.winfo_y() + (main.winfo_height() - 400) // 2
+        scanner.geometry(f"+{x}+{y}")
+
+        # Progress frame
+        progress_frame = ctk.CTkFrame(scanner)
+        progress_frame.pack(pady=20, padx=20, fill="x")
+
+        ctk.CTkLabel(progress_frame,
+                     text=f"Scanning target: {self.name}\nAddress: {self.add}",
+                     font=ctk.CTkFont(size=14)).pack(pady=10)
+
+        progress_label = ctk.CTkLabel(progress_frame,
+                                      text="Scan may take 10-30 minutes...",
+                                      font=ctk.CTkFont(size=12))
+        progress_label.pack()
+
+        progress_bar = ctk.CTkProgressBar(progress_frame, mode="indeterminate")
+        progress_bar.pack(pady=10, fill="x")
+        progress_bar.start()
+
+        # Game frame
+        game_frame = ctk.CTkFrame(scanner)
+        game_frame.pack(pady=10, padx=20, fill="both", expand=True)
+
+        ctk.CTkLabel(game_frame,
+                     text="Pass the time with this simple game:",
+                     font=ctk.CTkFont(size=14)).pack(pady=5)
+        # Game frame
+        game_frame = ctk.CTkFrame(scanner)
+        game_frame.pack(pady=10, padx=20, fill="both", expand=True)
+
+        ctk.CTkLabel(game_frame,
+                     text="Pass the time with this simple game:",
+                     font=ctk.CTkFont(size=14)).pack(pady=5)
+
+        # List of random game websites
+        game_websites = [
+            "https://www.miniclip.com/games/en/",
+            "https://www.crazygames.com/",
+            "https://www.agame.com/",
+            "https://www.kongregate.com/",
+            "https://poki.com/",
+            "https://www.addictinggames.com/",
+            "https://www.silvergames.com/",
+            "https://www.coolmathgames.com/"
+        ]
+
+        def open_random_game():
+            import webbrowser
+            import random
+            game_url = random.choice(game_websites)
+            webbrowser.open_new_tab(game_url)
+
+        # Add button to open random game website
+        game_button = ctk.CTkButton(
+            game_frame,
+            text="Click me!",
+            command=open_random_game,
+            fg_color="#3a7ebf",
+            hover_color="#2d5f8b",
+            height=40,
+            font=ctk.CTkFont(size=14)
+        )
+        game_button.pack(pady=10)
+
+
+        # Run the scan in a separate thread
+        def run_scan():
+            try:
+                report = VulnScan.scanTar(self.add)
+                if report and report != "None":
+                    report_path = os.path.join(settings["report_location"], f"{self.name}_report.txt")
+                    with open(report_path, 'w') as wr:
+                        wr.write(report)
+
+                    # Update UI when scan completes
+                    scanner.after(0, lambda: [
+                        progress_bar.stop(),
+                        progress_label.configure(text="Scan completed successfully!"),
+                        messagebox.showinfo("Success", f"Report saved to:\n{report_path}")
+                    ])
+                else:
+                    scanner.after(0, lambda: [
+                        progress_bar.stop(),
+                        progress_label.configure(text="Scan completed with no results"),
+                        messagebox.showinfo("Info", "Scan completed but no vulnerabilities found")
+                    ])
+            except Exception as e:
+                scanner.after(0, lambda: [
+                    progress_bar.stop(),
+                    progress_label.configure(text=f"Scan failed: {str(e)}"),
+                    messagebox.showerror("Error", f"Scan failed: {str(e)}")
+                ])
+            finally:
+                global scan_in_progress
+                scan_in_progress = False
+
+        threading.Thread(target=run_scan, daemon=True).start()
 
 
 targets = {}
@@ -88,6 +209,9 @@ def target_button_function(target_name):
     tar = targets[target_name]
 
     def start():
+        # Close the target selection window
+        subWin2.destroy()
+        # Start the scan
         tar.scan()
 
     subWin2 = ctk.CTkToplevel(main)
@@ -102,14 +226,11 @@ def target_button_function(target_name):
     subButton.pack()
     subWin2.transient(main)
     subWin2.grab_set()
-    subWin2.lift()
-
 
 # Initialize main window
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("dark-blue")
 
-main = ctk.CTk()
 main.geometry("960x540+200+200")
 main.title("IntelGuard - Your all-in-one Cyber Security toolkit")
 
@@ -177,6 +298,36 @@ LabelHome2 = ctk.CTkLabel(home_frame, text="""
 To scan vulnerabilities for a specified target, go to the \"Vulnerabilities Scanning\" tab. \n\n To scan the suspiciousness level of a exe file, go the the \"Virus Scanning\" tab. \n\n Go to the \"Settings\" tab for more settings. \n\n\n\n\n\n\n\n If you need more help, please contact the developer: orange.yichengyu.psn@gmail.com""",
                           font=ctk.CTkFont(size=18))
 LabelHome2.pack(pady=1)
+
+
+def open_nmap_download():
+    webbrowser.open("https://nmap.org/download.html")
+
+
+def open_setup_guide():
+    webbrowser.open("https://docs.google.com/document/d/1Lh_J9E0d4wnqrvreaYsArUXpsdKUKtrqJh2kfnc_NGI/edit?usp=sharing")
+
+
+# Add clickable links for nmap and setup guide
+nmap_link = ctk.CTkButton(
+    home_frame,
+    text="Download nmap",
+    command=open_nmap_download,
+    fg_color="#2a2a2a",
+    hover_color="#3a3a3a",
+    font=ctk.CTkFont(size=14)
+)
+nmap_link.pack(pady=(10, 2))
+
+setup_link = ctk.CTkButton(
+    home_frame,
+    text="Setup Guide",
+    command=open_setup_guide,
+    fg_color="#2a2a2a",
+    hover_color="#3a3a3a",
+    font=ctk.CTkFont(size=14)
+)
+setup_link.pack(pady=(0, 20))
 
 # Vulnerabilities Tab Content
 vuln_content_frame = ctk.CTkFrame(vuln_frame, fg_color=tab_content_bg)
@@ -415,6 +566,7 @@ console_settings_frame.pack(fill="x", pady=(0, 20))
 def open_nmap_website(event):
     webbrowser.open_new("https://nmap.org/download.html")
 
+
 nmap_link = ctk.CTkLabel(
     home_frame,
     text="Download Nmap here",
@@ -425,7 +577,6 @@ nmap_link = ctk.CTkLabel(
 )
 nmap_link.pack(pady=(10, 20))
 nmap_link.bind("<Button-1>", open_nmap_website)
-
 
 ctk.CTkLabel(console_settings_frame,
              text="Console Settings",
@@ -460,18 +611,7 @@ report_frame.pack(fill="x", pady=(0, 20))
 
 ctk.CTkLabel(report_frame,
              text="Report Settings",
-             font=("Segoe UI", 14, "bold")).pack(anchor="w", pady=(0, 10))
-
-# Report format selection
-format_frame = ctk.CTkFrame(report_frame, fg_color="transparent")
-format_frame.pack(fill="x", pady=(5, 0))
-
-ctk.CTkLabel(format_frame,
-             text="Default format:").pack(side="left")
-report_format = ctk.CTkOptionMenu(format_frame,
-                                  values=["Text", "HTML", "PDF"])
-report_format.pack(side="left", padx=5)
-report_format.set("HTML")
+             font=("Segoe UI", 14, "bold")).pack()
 
 
 # Report save location
@@ -483,7 +623,7 @@ def choose_report_location():
 
 
 report_location_frame = ctk.CTkFrame(report_frame, fg_color="transparent")
-report_location_frame.pack(fill="x", pady=(10, 0))
+report_location_frame.pack(fill="x")
 
 ctk.CTkLabel(report_location_frame,
              text="Save location:").pack(side="left")
@@ -499,7 +639,6 @@ ctk.CTkButton(report_location_frame,
 # Save Settings Button
 def save_settings():
     settings = {
-        'report_format': report_format.get(),
         'report_location': report_location_entry.get(),
         'preferred_shell': shell_option.get()
     }
@@ -577,14 +716,11 @@ btn_settings.pack(fill="x")
 # Load saved settings
 def load_settings():
     global current_shell
+    global settings
     try:
         if os.path.exists('intelguard_config.json'):
             with open('intelguard_config.json', 'r') as f:
                 settings = json.load(f)
-
-                # Report settings
-                if 'report_format' in settings:
-                    report_format.set(settings['report_format'])
                 if 'report_location' in settings:
                     report_location_entry.delete(0, "end")
                     report_location_entry.insert(0, settings['report_location'])

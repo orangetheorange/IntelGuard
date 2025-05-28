@@ -3,6 +3,8 @@ import socket_processes
 from urllib.parse import urlparse, parse_qs
 import SQLscan
 import report
+from tkinter import messagebox
+import commandgen
 
 def has_parameters(url: str) -> bool:
     parsed = urlparse(url)
@@ -16,6 +18,9 @@ def run_command(command):
 def scanTar(target):
     reportinp = ""
     result = socket_processes.scan(target)
+    if result.get("Stat") == "down":
+        messagebox.showwarning("Scan Failed", "The target host is currently down or does not exist, please try again later.")
+        return f"The target host {target["Target"]} is currently down or does not exist, please double check for any typos, misinformation or try again later."
     if result.get("Iden") == "url":
         if has_parameters(target):
             cmd = SQLscan.url_to_sqlmap_command(target)
@@ -35,8 +40,9 @@ def scanTar(target):
         target = urlparse(target).hostname
     else:
         reportinp += f"\n[Info] Target is not a URL: {target}\n"
-    cmd = ""
+    result["Target"] = target
+    cmd = commandgen.command(result)
     vulnResult = run_command(cmd)
     rep = report.report(vulnResult)
+    print(rep)
     return rep
-
