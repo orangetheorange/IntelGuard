@@ -80,4 +80,4 @@ def generate_interaction_based_dataset(num_samples=10000, random_state=42):
 
 if __name__ == '__main__':
     dataset = generate_interaction_based_dataset(num_samples=10000, random_state=42)
-    dataset.to_csv('synthetic_malware_suspiciousness_dataset.csv', index=False)
+    dataset.to_csv('malware_suspiciousness_dataset.csv', index=False)
