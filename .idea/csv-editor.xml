@@ -17,20 +17,6 @@
             </Attribute>
           </value>
         </entry>
-        <entry key="\interaction_based_synthetic_malware_dataset.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="\scipvuldb.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value=";" />
-            </Attribute>
-          </value>
-        </entry>
         <entry key="\synthetic_malware_suspiciousness_dataset.csv">
           <value>
             <Attribute>
