@@ -93,13 +93,13 @@ class IntelGuardNet(nn.Module):
         return self.fc_out(output)
 
     def generate(self, input_ids, max_length=50):
-        """Syntax-aware generation method"""
         self.eval()
         device = input_ids.device
-        # Use pad_token_id or simply 0 as the initial token
         start_token_id = self.tokenizer.pad_token_id or 0
+        eos_token_id = self.tokenizer.eos_token_id
 
-        decoder_input = torch.tensor([[start_token_id]], device=device)
+        batch_size = input_ids.size(0)
+        decoder_input = torch.full((batch_size, 1), start_token_id, dtype=torch.long, device=device)
 
         for _ in range(max_length):
             with torch.no_grad():
@@ -108,11 +108,12 @@ class IntelGuardNet(nn.Module):
                     decoder_input_ids=decoder_input
                 )
 
-            next_token_logits = outputs[:, -1, :]
-            next_token = torch.argmax(next_token_logits, dim=-1)
-            decoder_input = torch.cat([decoder_input, next_token.unsqueeze(0)], dim=-1)
+            next_token_logits = outputs[:, -1, :]  # [batch_size, vocab_size]
+            next_token = torch.argmax(next_token_logits, dim=-1, keepdim=True)  # [batch_size, 1]
+            decoder_input = torch.cat([decoder_input, next_token], dim=1)  # [batch_size, seq+1]
 
-            if next_token.item() == self.tokenizer.eos_token_id:
+            if eos_token_id is not None and (next_token == eos_token_id).all():
                 break
 
         return decoder_input
+
