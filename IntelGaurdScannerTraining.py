@@ -32,6 +32,36 @@ target_encodings = tokenizer(df["Custom Command"].tolist(), padding=True, trunca
                              return_tensors="pt")
 
 
+def generate_command(input_text, max_len=64):
+    # tokenize encoder input
+    enc = tokenizer(
+        input_text,
+        padding="max_length",
+        truncation=True,
+        max_length=128,
+        return_tensors="pt"
+    ).to(device)
+    input_ids = enc.input_ids
+    attention_mask = enc.attention_mask
+
+    # start decoder with pad token
+    decoder_ids = torch.full((1, 1), tokenizer.pad_token_id, dtype=torch.long, device=device)
+
+    for _ in range(max_len):
+        logits = model(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            decoder_input_ids=decoder_ids
+        )
+        next_token = torch.argmax(logits[:, -1, :], dim=-1, keepdim=True)
+        decoder_ids = torch.cat([decoder_ids, next_token], dim=-1)
+        if next_token.item() == tokenizer.eos_token_id:
+            break
+
+    # skip initial pad token
+    gen_ids = decoder_ids[:, 1:]
+    return tokenizer.decode(gen_ids[0], skip_special_tokens=True)
+
 # 3. Dataset Class with better batching
 class CommandDataset(Dataset):
     def __init__(self, input_encodings, target_encodings):
@@ -220,18 +250,23 @@ for epoch in range(1):
 
     for step, batch in enumerate(progress_bar):
         batch = {k: v.to(device) for k, v in batch.items()}
-#         print("batch at itter",  batch["input_ids"])
         optimizer.zero_grad()
 
+        # Forward pass - using decoder_input_ids as you originally had
         outputs = model(
             input_ids=batch["input_ids"],
             attention_mask=batch["attention_mask"],
-            decoder_input_ids=batch["labels"][:, :-1]
+            decoder_input_ids=batch["labels"][:, :-1]  # Shift right (remove last token)
         )
 
-        loss = custom_loss(outputs, batch["labels"][:, 1:], tokenizer)
-        loss.backward()
+        # Calculate loss against the shifted labels (remove first token)
+        loss = custom_loss(
+            outputs,
+            batch["labels"][:, 1:],  # Shift left (remove first token)
+            tokenizer
+        )
 
+        loss.backward()
         torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
         optimizer.step()
         scheduler.step()

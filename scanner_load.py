@@ -31,7 +31,7 @@ model = IntelGuardNet(
 # 2.2 load only the weights you saved (final_model.pth is just a state_dict)
 print("loading weights from final_model.pth…")
 state_dict = torch.load(
-    r"best_model.pth",
+    r"final_model.pth",
     map_location=device
 )
 model.load_state_dict(state_dict)
@@ -85,7 +85,7 @@ def predict_command(raw):
     return generate_command(input_text)
 
 
-# 4. Main application loop
+# 4. Main application loop for testing
 if __name__ == "__main__":
     print("Welcome to IntelGuardNet Command Generator!")
 
