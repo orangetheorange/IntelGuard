@@ -119,10 +119,10 @@ class Target():
                         messagebox.showinfo("Info", "Scan completed but no vulnerabilities found")
                     ])
             except Exception as e:
-                scanner.after(0, lambda: [
+                scanner.after(0, lambda: [  # Fixed here
                     progress_bar.stop(),
-                    progress_label.configure(text=f"Scan failed: {str(e)}"),
-                    messagebox.showerror("Error", f"Scan failed: {str(e)}")
+                    progress_label.configure(text=f"Scan failed."),
+                    messagebox.showerror("Error", f"Scan failed.")
                 ])
             finally:
                 global scan_in_progress
