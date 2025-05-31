@@ -231,5 +231,3 @@ def command(target):
     nmap_command = f"nmap --script {','.join(selected_scripts)} {target['Target']}"
 
     return nmap_command
-test = {'Target': 'localhost', 'Iden': 'URL', 'Stat': 'up', 'Open Ports': {'135': 'Microsoft Windows RPC', '2869': 'Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP)', '5357': 'Microsoft HTTPAPI httpd 2.0 (SSDP/UPnP)', '9010': 'WebSocket++ 0.8.2'}, 'OS': 'windows'}
-print(command(test))
