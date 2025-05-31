@@ -59,15 +59,6 @@ class Target():
         progress_bar = ctk.CTkProgressBar(progress_frame, mode="indeterminate")
         progress_bar.pack(pady=10, fill="x")
         progress_bar.start()
-
-        # Game frame
-        game_frame = ctk.CTkFrame(scanner)
-        game_frame.pack(pady=10, padx=20, fill="both", expand=True)
-
-        ctk.CTkLabel(game_frame,
-                     text="Pass the time with this simple game:",
-                     font=ctk.CTkFont(size=14)).pack(pady=5)
-        # Game frame
         game_frame = ctk.CTkFrame(scanner)
         game_frame.pack(pady=10, padx=20, fill="both", expand=True)
 

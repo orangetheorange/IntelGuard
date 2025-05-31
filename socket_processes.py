@@ -5,7 +5,7 @@ import socket
 import subprocess
 import sys
 import shutil
-
+from urllib.parse import urlparse
 
 def ensure_nmap_in_path():
     """Ensure nmap is accessible from the current Python environment on Windows."""
@@ -18,7 +18,7 @@ def ensure_nmap_in_path():
                 print("❌ Error: Nmap not found at expected location.")
                 return False
         return True
-    return True  # Linux/Mac typically fine if installed via package manager
+    return True
 
 
 def grant_sudo_access():
@@ -33,7 +33,17 @@ def ping(host):
     command = ["ping", param, "4", host]
     response = subprocess.getoutput(" ".join(command))
     print(response)
-    return "up" if "TTL=" in response or "ttl=" in response or "::1" in response else "down"
+
+    # Check for signs of successful responses
+    if platform.system().lower() == "windows":
+        # Handles both English and Chinese responses
+        if "TTL=" in response or "ttl=" in response or "的回复" in response or "Reply from" in response:
+            return "up"
+    else:
+        if "bytes from" in response:
+            return "up"
+    return "down"
+
 
 
 def portscan(host, args="-sV -O"):
@@ -87,10 +97,17 @@ def scan(target):
     iden = identify_input(target)
     print("Target input type:", iden)
 
-    stat = ping(target)
+    # Extract domain from URL if needed
+    if iden == "URL":
+        parsed = urlparse(target)
+        target_host = parsed.hostname or parsed.path.split("/")[0]
+    else:
+        target_host = target
+
+    stat = ping(target_host)
     print("The host is", stat)
 
-    open_ports, os_info = portscan(target)
+    open_ports, os_info = portscan(target_host)
     print("Open Ports:")
     for port, desc in open_ports.items():
         print(f"{port}: {desc}")

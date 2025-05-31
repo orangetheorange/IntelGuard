@@ -24,7 +24,7 @@
             </Attribute>
           </value>
         </entry>
-        <entry key="\virus_old\synthetic_malware_suspiciousness_dataset.csv">
+        <entry key="\virus_old\malware_suspiciousness_dataset.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />

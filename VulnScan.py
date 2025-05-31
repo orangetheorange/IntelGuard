@@ -29,6 +29,7 @@ def scanTar(target):
                     # Run sqlmap command and capture output
                     completed = subprocess.run(cmd, capture_output=True, text=True, check=True)
                     sqlmap_output = completed.stdout
+                    print(sqlmap_output)
                     reportinp += f"\n--- SQLMap scan results for {target} ---\n"
                     reportinp += sqlmap_output
                 except subprocess.CalledProcessError as e:

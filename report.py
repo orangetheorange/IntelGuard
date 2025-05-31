@@ -10,13 +10,14 @@ def report(result):
     model = AutoModelForCausalLM.from_pretrained(
         model_name,
         torch_dtype=torch.bfloat16,
-        device_map="auto"
+        device_map="auto",
+        offload_folder="./offload"
     )
 
     # Construct chat messages
     question = (
         f"{result} \nThis is a result of a vulnerability scan for the target. "
-        f"Generate a report containing a description and a solution. If there are none vulnerabilities or its signs, just state that its safe, but also give further instructions to prevent other dangers. "
+        f"Generate a report containing a description and a solution. If there are no vulnerabilities or it's signs, just state that it's safe, but also give further instructions to prevent other dangers. "
         f"Your response should only contain the report itself."
     )
 
